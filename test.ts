@@ -1,0 +1,1 @@
+const tasks = [{id: '1'}]; new Map(tasks.map((t) => [t.id, t]));
