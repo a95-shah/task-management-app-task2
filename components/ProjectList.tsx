@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Project, OptimisticProject } from '@/lib/types'
 import ProjectCard from './ProjectCard'
 import CreateProjectModal from './CreateProjectModal'
+import EditProjectModal from './EditProjectModal'
 import EmptyState from './ui/EmptyState'
 import Button from './ui/Button'
 import { useToast } from './ui/Toast'
@@ -17,6 +18,11 @@ interface ProjectListProps {
 export default function ProjectList({ initialProjects, userId }: ProjectListProps) {
   const [projects, setProjects] = useState<OptimisticProject[]>(initialProjects)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  
+  // Edit state
+  const [editProject, setEditProject] = useState<OptimisticProject | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  
   const supabase = createClient()
   const { showToast } = useToast()
 
@@ -106,6 +112,32 @@ export default function ProjectList({ initialProjects, userId }: ProjectListProp
     [supabase, userId, showToast]
   )
 
+  // Optimistic edit
+  const handleEditProject = useCallback(
+    async (projectId: string, title: string, description: string) => {
+      const previousProjects = projects
+      
+      // Optimistic: update immediately
+      setProjects((prev) =>
+        prev.map((p) => (p.id === projectId ? { ...p, title, description, _optimistic: true } : p))
+      )
+
+      const { error } = await supabase
+        .from('projects')
+        .update({ title, description: description || null })
+        .eq('id', projectId)
+
+      if (error) {
+        // Rollback
+        setProjects(previousProjects)
+        showToast(error.message, 'error')
+      } else {
+        showToast('Project updated!', 'success')
+      }
+    },
+    [supabase, projects, showToast]
+  )
+
   // Optimistic delete
   const handleDeleteProject = useCallback(
     async (projectId: string) => {
@@ -126,6 +158,11 @@ export default function ProjectList({ initialProjects, userId }: ProjectListProp
     },
     [supabase, projects, showToast]
   )
+
+  const openEditModal = (project: OptimisticProject) => {
+    setEditProject(project)
+    setShowEditModal(true)
+  }
 
   return (
     <>
@@ -163,6 +200,7 @@ export default function ProjectList({ initialProjects, userId }: ProjectListProp
               key={project.id}
               project={project}
               onDelete={handleDeleteProject}
+              onEdit={() => openEditModal(project)}
             />
           ))}
         </div>
@@ -173,6 +211,17 @@ export default function ProjectList({ initialProjects, userId }: ProjectListProp
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreate={handleCreateProject}
+      />
+      
+      {/* Edit project modal */}
+      <EditProjectModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false)
+          setTimeout(() => setEditProject(null), 200) // Clear after animation
+        }}
+        onEdit={handleEditProject}
+        project={editProject}
       />
     </>
   )

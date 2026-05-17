@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Task, TaskStatus, OptimisticTask } from '@/lib/types'
 import TaskCard from './TaskCard'
 import CreateTaskForm from './CreateTaskForm'
+import EditTaskModal from './EditTaskModal'
 import { useToast } from './ui/Toast'
 
 interface TaskBoardProps {
@@ -20,6 +21,11 @@ const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
 
 export default function TaskBoard({ projectId, initialTasks }: TaskBoardProps) {
   const [tasks, setTasks] = useState<OptimisticTask[]>(initialTasks)
+  
+  // Edit state
+  const [editTask, setEditTask] = useState<OptimisticTask | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  
   const supabase = createClient()
   const { showToast } = useToast()
 
@@ -158,6 +164,30 @@ export default function TaskBoard({ projectId, initialTasks }: TaskBoardProps) {
     [supabase, projectId, showToast]
   )
 
+  // Optimistic update task text
+  const handleEditTask = useCallback(
+    async (taskId: string, title: string, description: string) => {
+      const previousTasks = tasks
+
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, title, description, _optimistic: true } : t))
+      )
+
+      const { error } = await supabase
+        .from('tasks')
+        .update({ title, description: description || null })
+        .eq('id', taskId)
+
+      if (error) {
+        setTasks(previousTasks)
+        showToast(error.message, 'error')
+      } else {
+        showToast('Task updated!', 'success')
+      }
+    },
+    [supabase, tasks, showToast]
+  )
+
   // Optimistic update task status
   const handleUpdateStatus = useCallback(
     async (taskId: string, newStatus: TaskStatus) => {
@@ -203,6 +233,11 @@ export default function TaskBoard({ projectId, initialTasks }: TaskBoardProps) {
   const deduplicatedTasks = Array.from(
     new Map(tasks.map((t) => [t.id, t])).values()
   )
+  
+  const openEditModal = (task: OptimisticTask) => {
+    setEditTask(task)
+    setShowEditModal(true)
+  }
 
   return (
     <div>
@@ -242,6 +277,7 @@ export default function TaskBoard({ projectId, initialTasks }: TaskBoardProps) {
                       task={task}
                       onUpdateStatus={handleUpdateStatus}
                       onDelete={handleDeleteTask}
+                      onEdit={() => openEditModal(task)}
                     />
                   ))
                 )}
@@ -250,6 +286,17 @@ export default function TaskBoard({ projectId, initialTasks }: TaskBoardProps) {
           )
         })}
       </div>
+      
+      {/* Edit task modal */}
+      <EditTaskModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false)
+          setTimeout(() => setEditTask(null), 200) // Clear after animation
+        }}
+        onEdit={handleEditTask}
+        task={editTask}
+      />
     </div>
   )
 }

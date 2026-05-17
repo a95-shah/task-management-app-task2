@@ -7,9 +7,10 @@ import type { OptimisticProject } from '@/lib/types'
 interface ProjectCardProps {
   project: OptimisticProject
   onDelete: (id: string) => void
+  onEdit: () => void
 }
 
-export default function ProjectCard({ project, onDelete }: ProjectCardProps) {
+export default function ProjectCard({ project, onDelete, onEdit }: ProjectCardProps) {
   const [showConfirm, setShowConfirm] = useState(false)
 
   const formattedDate = new Date(project.created_at).toLocaleDateString('en-US', {
@@ -47,19 +48,37 @@ export default function ProjectCard({ project, onDelete }: ProjectCardProps) {
         <span className="text-xs text-gray-500">{formattedDate}</span>
 
         {!showConfirm ? (
-          <button
-            onClick={() => setShowConfirm(true)}
-            className="text-gray-500 hover:text-red-400 transition-colors p-1 rounded opacity-0 group-hover:opacity-100"
-            aria-label="Delete project"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                onEdit()
+              }}
+              className="text-gray-500 hover:text-blue-400 transition-colors p-1 rounded"
+              aria-label="Edit project"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                setShowConfirm(true)
+              }}
+              className="text-gray-500 hover:text-red-400 transition-colors p-1 rounded"
+              aria-label="Delete project"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         ) : (
           <div className="flex items-center gap-1">
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault()
                 onDelete(project.id)
                 setShowConfirm(false)
               }}
@@ -68,7 +87,10 @@ export default function ProjectCard({ project, onDelete }: ProjectCardProps) {
               Delete
             </button>
             <button
-              onClick={() => setShowConfirm(false)}
+              onClick={(e) => {
+                e.preventDefault()
+                setShowConfirm(false)
+              }}
               className="text-xs text-gray-400 hover:text-gray-300 px-2 py-1 rounded transition-colors"
             >
               Cancel
